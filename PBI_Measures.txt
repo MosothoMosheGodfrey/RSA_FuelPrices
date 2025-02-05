@@ -1,0 +1,73 @@
+// @MMG Power BI Measures for Fuel Price Analysis....
+
+Average Fuel Price = AVERAGE(FuelData[Fuel_Price])
+
+Total Fuel Price by Location = SUM(FuelData[Fuel_Price])
+
+Total Fuel Price by Product = SUM(FuelData[Fuel_Price])
+
+Highest Fuel Price = MAX(FuelData[Fuel_Price])  
+
+Lowest Fuel Price = MIN(FuelData[Fuel_Price])
+
+MoM Change % = 
+VAR CurrentMonth = CALCULATE(SUM(FuelData[Fuel_Price]), FILTER(FuelData, FuelData[InformationDate] = MAX(FuelData[InformationDate])))
+VAR PreviousMonth = CALCULATE(SUM(FuelData[Fuel_Price]), FILTER(FuelData, FuelData[InformationDate] = DATEADD(FuelData[InformationDate], -1, MONTH)))
+RETURN IF(PreviousMonth = 0, BLANK(), (CurrentMonth - PreviousMonth) / PreviousMonth)
+
+YoY Change % = 
+VAR CurrentYear = CALCULATE(SUM(FuelData[Fuel_Price]), FILTER(FuelData, FuelData[InformationDate] = MAX(FuelData[InformationDate])))
+VAR PreviousYear = CALCULATE(SUM(FuelData[Fuel_Price]), FILTER(FuelData, FuelData[InformationDate] = DATEADD(FuelData[InformationDate], -1, YEAR)))
+RETURN IF(PreviousYear = 0, BLANK(), (CurrentYear - PreviousYear) / PreviousYear)
+
+MoM Rate Symbol = 
+VAR MoMValue = MAX(FuelData[MoM_rates])
+RETURN 
+    SWITCH(
+        TRUE(),
+        MoMValue > 0, "▲",  // Upward triangle for positive values
+        MoMValue < 0, "▼",  // Downward triangle for negative values
+        MoMValue = 0, "●"   // Circle for zero values
+    )
+
+3-Month Moving Average = 
+VAR CurrentDate = MAX(FuelData[InformationDate])
+VAR StartDate = DATEADD(CurrentDate, -2, MONTH)
+RETURN 
+    CALCULATE(
+        AVERAGE(FuelData[Fuel_Price]),
+        DATESBETWEEN(FuelData[InformationDate], StartDate, CurrentDate)
+    )
+
+Fuel Price Variance = VAR(FuelData[Fuel_Price])
+
+Fuel Price Distribution = 
+SUMMARIZE(FuelData, FuelData[Location], "Average Price", AVERAGE(FuelData[Fuel_Price]))
+
+Fuel Price Growth Rate (CAGR) = 
+VAR StartDate = MIN(FuelData[InformationDate])
+VAR EndDate = MAX(FuelData[InformationDate])
+VAR StartPrice = CALCULATE(AVERAGE(FuelData[Fuel_Price]), FuelData[InformationDate] = StartDate)
+VAR EndPrice = CALCULATE(AVERAGE(FuelData[Fuel_Price]), FuelData[InformationDate] = EndDate)
+VAR Years = DATEDIFF(StartDate, EndDate, YEAR)
+RETURN IF(Years = 0, BLANK(), (EndPrice / StartPrice) ^ (1 / Years) - 1)
+
+Fuel Price Forecast = 
+VAR KnownData = FILTER(FuelData, NOT ISBLANK(FuelData[Fuel_Price]))
+VAR Slope = SLOPE(KnownData[Fuel_Price], KnownData[InformationDate])
+VAR Intercept = INTERCEPT(KnownData[Fuel_Price], KnownData[InformationDate])
+RETURN Intercept + Slope * MAX(FuelData[InformationDate])
+
+Fuel Price Rank = RANKX(ALL(FuelData[Location]), AVERAGE(FuelData[Fuel_Price]))
+
+Fuel Price Contribution % = 
+VAR TotalPrice = CALCULATE(SUM(FuelData[Fuel_Price]), ALL(FuelData[Location]))
+RETURN DIVIDE(SUM(FuelData[Fuel_Price]), TotalPrice)
+
+Fuel Price Volatility = STDEV.P(FuelData[Fuel_Price])
+ 
+Fuel Price Change = 
+VAR CurrentMonth = CALCULATE(SUM(FuelData[Fuel_Price]), FILTER(FuelData, FuelData[InformationDate] = MAX(FuelData[InformationDate])))
+VAR PreviousMonth = CALCULATE(SUM(FuelData[Fuel_Price]), FILTER(FuelData, FuelData[InformationDate] = DATEADD(FuelData[InformationDate], -1, MONTH)))
+RETURN CurrentMonth - PreviousMonth
+
